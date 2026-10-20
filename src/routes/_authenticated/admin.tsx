@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState, type FormEvent } from "react";
-import { Plus, Save, LogOut, Pencil, Mail, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, Save, LogOut, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { adminDashboard, deletePackage, savePackage } from "@/lib/packages.functions";
+import { deleteInquiry } from "@/lib/inquiries.functions";
 import { packageSchema } from "@/lib/packages-schema";
 import { logoutAdmin } from "@/lib/admin-auth.functions";
 import { Button } from "@/components/ui/button";
@@ -36,31 +37,38 @@ function Admin() {
   const fetchDashboard = useServerFn(adminDashboard);
   const save = useServerFn(savePackage);
   const remove = useServerFn(deletePackage);
+  const removeInquiry = useServerFn(deleteInquiry);
   const signOut = useServerFn(logoutAdmin);
   const client = useQueryClient();
   const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ["owner-dashboard"],
     queryFn: () => fetchDashboard(),
     retry: false,
-    refetchInterval: tab === "messages" ? 3_000 : 15_000,
+    refetchInterval: 3_000,
   });
   const [edit, setEdit] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
+  const [messageOrder, setMessageOrder] = useState<"newest" | "oldest">("newest");
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const selected = data?.packages.find((item) => item.id === edit);
   const filteredInquiries = useMemo(() => {
     const query = messageSearch.trim().toLowerCase();
-    if (!query) return data?.inquiries ?? [];
-
-    return (data?.inquiries ?? []).filter((item) =>
-      [item.name, item.email, item.company, item.message, item.package_name]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
+    const inquiries = (data?.inquiries ?? []).filter(
+      (item) =>
+        !query ||
+        [item.name, item.email, item.company, item.message, item.package_name]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
     );
-  }, [data?.inquiries, messageSearch]);
+    return inquiries.sort((a, b) => {
+      const difference = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return messageOrder === "newest" ? -difference : difference;
+    });
+  }, [data?.inquiries, messageOrder, messageSearch]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,6 +132,21 @@ function Admin() {
       setNotice(cause instanceof Error ? cause.message : "Package could not be deleted.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function removeMessage(id: string, name: string) {
+    if (!window.confirm(`Delete the message from ${name}? This cannot be undone.`)) return;
+    setDeletingMessageId(id);
+    setNotice("");
+    try {
+      await removeInquiry({ data: { id } });
+      await client.invalidateQueries({ queryKey: ["owner-dashboard"] });
+      setNotice("Message deleted.");
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "Message could not be deleted.");
+    } finally {
+      setDeletingMessageId(null);
     }
   }
 
@@ -308,7 +331,7 @@ function Admin() {
           ) : (
             <section id="admin-panel-messages" role="region" aria-labelledby="admin-tab-messages">
               <div className="admin-message-tools">
-                <label htmlFor="admin-message-search">Search recent messages</label>
+                <label htmlFor="admin-message-search">Search messages</label>
                 <Input
                   id="admin-message-search"
                   type="search"
@@ -316,8 +339,20 @@ function Admin() {
                   value={messageSearch}
                   onChange={(event) => setMessageSearch(event.target.value)}
                 />
+                <label htmlFor="admin-message-order">Order messages</label>
+                <select
+                  id="admin-message-order"
+                  className="admin-select"
+                  value={messageOrder}
+                  onChange={(event) =>
+                    setMessageOrder(event.target.value === "oldest" ? "oldest" : "newest")
+                  }
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
                 <p role="status">
-                  Showing {filteredInquiries.length} of {data?.inquiries.length ?? 0} recent
+                  Showing {filteredInquiries.length} of {data?.inquiries.length ?? 0}
                   messages
                   {(data?.inquiries.length ?? 0) === 100 ? " (latest 100)" : ""}
                   {" · Updates every 3 seconds while this tab is open"}
@@ -326,21 +361,25 @@ function Admin() {
               <div className="admin-list">
                 {filteredInquiries.map((item) => (
                   <article className="admin-message" key={item.id}>
-                    <span className="eyebrow">
-                      {new Date(item.created_at).toLocaleString()}
-                      {item.package_name && ` / ${item.package_name}`}
-                    </span>
+                    <div className="admin-message-heading">
+                      <span className="eyebrow">
+                        {new Date(item.created_at).toLocaleString()}
+                        {item.package_name && ` / ${item.package_name}`}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        disabled={deletingMessageId === item.id}
+                        aria-label={`Delete message from ${item.name}`}
+                        onClick={() => void removeMessage(item.id, item.name)}
+                      >
+                        <Trash2 />
+                        {deletingMessageId === item.id ? "Deleting…" : "Delete"}
+                      </Button>
+                    </div>
                     <h3>{item.name}</h3>
+                    <p>{item.email}</p>
                     {item.company && <p>{item.company}</p>}
                     <p className="whitespace-pre-wrap">{item.message}</p>
-                    <Button variant="outline" asChild>
-                      <a
-                        href={`mailto:${encodeURIComponent(item.email)}?subject=${encodeURIComponent("Your project inquiry — Hugues B.")}`}
-                      >
-                        <Mail />
-                        Reply to {item.email}
-                      </a>
-                    </Button>
                   </article>
                 ))}
                 {!filteredInquiries.length && (

@@ -8,10 +8,11 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { PortfolioThemeContext } from "@/lib/portfolio-theme";
 
 function NotFoundComponent() {
   return (
@@ -79,7 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Hugues B. - Creative Developer & Platform Builder" },
-      { name: "description", content: "Portfolio, featured projects, packages, and contact links for Hugues B." },
+      {
+        name: "description",
+        content: "Portfolio, featured projects, packages, and contact links for Hugues B.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -91,7 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -102,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>
@@ -116,11 +123,30 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("portfolio-theme");
+    const initialTheme = savedTheme === "light" ? "light" : "dark";
+    document.documentElement.classList.toggle("light", initialTheme === "light");
+    document.documentElement.classList.toggle("dark", initialTheme === "dark");
+    setTheme(initialTheme);
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    document.documentElement.classList.toggle("light", nextTheme === "light");
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    window.localStorage.setItem("portfolio-theme", nextTheme);
+    setTheme(nextTheme);
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <PortfolioThemeContext.Provider value={{ theme, toggleTheme }}>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </PortfolioThemeContext.Provider>
     </QueryClientProvider>
   );
 }

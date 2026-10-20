@@ -31,7 +31,11 @@ function ProjectBrief() {
   const { package: initialPackage, custom } = Route.useSearch();
   const isCustomProject = custom === '1' || custom === 1;
   const fetchPackages = useServerFn(listPackages);
-  const { data = [], isPending, isError } = useQuery({ queryKey: ['public-packages'], queryFn: () => fetchPackages() });
+  const { data = [], isPending, isError } = useQuery({
+    queryKey: ['public-packages'],
+    queryFn: () => fetchPackages(),
+    refetchInterval: 3_000,
+  });
   const availablePackages: PublicPackage[] = data.length ? data : fallbackPackages;
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [paymentOption, setPaymentOption] = useState<'once' | 'milestones'>('once');
@@ -93,7 +97,7 @@ function ProjectBrief() {
       <CheckCircle2 aria-hidden="true" />
       <span className="eyebrow">Project brief received</span>
       <h2>Thank you. Your project is in good hands.</h2>
-      <p>Your details and selected package have been securely sent to the studio. You can expect a reply by email.</p>
+      <p>Thank you for your package request. You will receive a brief email with feedback and recommended next steps.</p>
       <Button asChild className="portfolio-button"><Link to="/">Return to the portfolio<ArrowRight /></Link></Button>
     </section> : <form className="order-form" onSubmit={handleSubmit}>
       <section className="order-section">
@@ -121,9 +125,9 @@ function ProjectBrief() {
       <section className="order-section">
         <div className="order-section-heading"><div><span className="eyebrow">02 / Tell me about it</span><h2>Client information</h2></div><span className="section-index">All fields marked * are required</span></div>
         <div className="order-fields">
-          <label>Full contact name *<Input name="name" placeholder="e.g. Chaste Djaziri" required minLength={2} maxLength={100} autoComplete="name" /></label>
+          <label>Full contact name *<Input name="name" placeholder="e.g. Jordan Lee" required minLength={2} maxLength={100} autoComplete="name" /></label>
           <label>Work email address *<Input name="email" type="email" placeholder="e.g. chaste@company.com" required maxLength={254} autoComplete="email" /></label>
-          <label>Company / organization<Input name="company" placeholder="e.g. MiCorp Technologies" maxLength={150} autoComplete="organization" /></label>
+          <label>Company / organization<Input name="company" placeholder="e.g. Acme Studio" maxLength={150} autoComplete="organization" /></label>
           <label>Phone number (optional)<Input name="phone" type="tel" placeholder="+250 788 000 000" maxLength={40} autoComplete="tel" /></label>
           <label>Country / region (optional)<Input name="country" placeholder="e.g. Rwanda" maxLength={100} autoComplete="country-name" /></label>
           <label className="order-message-field">What would you like to build? *<Textarea name="message" placeholder="Share your goals, the people this is for, the key features you have in mind, and any target launch date..." required minLength={10} maxLength={5000} /></label>

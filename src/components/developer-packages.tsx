@@ -11,8 +11,12 @@ export function DeveloperPackages() {
     data = [],
     isPending,
     isError,
-  } = useQuery({ queryKey: ["public-packages"], queryFn: () => fetchPackages() });
-  const packages = data.length > 0 ? data : fallbackPackages;
+  } = useQuery({
+    queryKey: ["public-packages"],
+    queryFn: () => fetchPackages(),
+    refetchInterval: 3_000,
+  });
+  const packages = isError || isPending ? fallbackPackages : data;
 
   return (
     <section id="packages" className="portfolio-band packages-section">

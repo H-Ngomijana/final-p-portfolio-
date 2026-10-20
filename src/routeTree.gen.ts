@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ProjectAgreementRouteImport } from './routes/project-agreement'
 import { Route as StartProjectRouteImport } from './routes/start-project'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiUploadsFileRouteImport } from './routes/api.uploads.$file'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +46,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiUploadsFileRoute = ApiUploadsFileRouteImport.update({
+  id: '/api/uploads/$file',
+  path: '/api/uploads/$file',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/project-agreement': typeof ProjectAgreementRoute
   '/start-project': typeof StartProjectRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/api/uploads/$file': typeof ApiUploadsFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/project-agreement': typeof ProjectAgreementRoute
   '/start-project': typeof StartProjectRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/api/uploads/$file': typeof ApiUploadsFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,12 +76,25 @@ export interface FileRoutesById {
   '/project-agreement': typeof ProjectAgreementRoute
   '/start-project': typeof StartProjectRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/api/uploads/$file': typeof ApiUploadsFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/project-agreement' | '/start-project' | '/admin'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/project-agreement'
+    | '/start-project'
+    | '/admin'
+    | '/api/uploads/$file'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/project-agreement' | '/start-project' | '/admin'
+  to:
+    | '/'
+    | '/auth'
+    | '/project-agreement'
+    | '/start-project'
+    | '/admin'
+    | '/api/uploads/$file'
   id:
     | '__root__'
     | '/'
@@ -82,6 +103,7 @@ export interface FileRouteTypes {
     | '/project-agreement'
     | '/start-project'
     | '/_authenticated/admin'
+    | '/api/uploads/$file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -90,6 +112,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ProjectAgreementRoute: typeof ProjectAgreementRoute
   StartProjectRoute: typeof StartProjectRoute
+  ApiUploadsFileRoute: typeof ApiUploadsFileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -136,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/uploads/$file': {
+      id: '/api/uploads/$file'
+      path: '/api/uploads/$file'
+      fullPath: '/api/uploads/$file'
+      preLoaderRoute: typeof ApiUploadsFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,6 +186,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ProjectAgreementRoute: ProjectAgreementRoute,
   StartProjectRoute: StartProjectRoute,
+  ApiUploadsFileRoute: ApiUploadsFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

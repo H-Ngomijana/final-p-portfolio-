@@ -10,6 +10,8 @@ import {
   Menu,
   MessageCircle,
   MoveUpRight,
+  Moon,
+  Sun,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ import { InquiryDialog } from "@/components/inquiry-dialog";
 import { PersonalAbout, PersonalPortfolio } from "@/components/personal-portfolio";
 import { DeveloperPackages } from "@/components/developer-packages";
 import { portfolioSections, shouldDockNavigation } from "@/lib/portfolio-navigation";
+import { usePortfolioTheme } from "@/lib/portfolio-theme";
 
 const Sculpture = lazy(() => import("@/components/sculpture"));
 
@@ -59,6 +62,7 @@ function BrandMark() {
 }
 
 function Index() {
+  const { theme, toggleTheme } = usePortfolioTheme();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
@@ -68,8 +72,14 @@ function Index() {
   const portraitRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    const exitTimer = window.setTimeout(() => setLoaderExiting(true), 1700);
-    const removeTimer = window.setTimeout(() => setLoaderVisible(false), 2000);
+    if (window.sessionStorage.getItem("portfolio-loader-seen") === "true") {
+      setLoaderVisible(false);
+      return;
+    }
+    window.sessionStorage.setItem("portfolio-loader-seen", "true");
+
+    const exitTimer = window.setTimeout(() => setLoaderExiting(true), 2700);
+    const removeTimer = window.setTimeout(() => setLoaderVisible(false), 3000);
     return () => {
       window.clearTimeout(exitTimer);
       window.clearTimeout(removeTimer);
@@ -216,18 +226,31 @@ function Index() {
               </a>
             ))}
           </nav>
-          <div className="header-contact">{cta()}</div>
-          <Button
-            className="mobile-toggle"
-            variant="ghost"
-            size="icon"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-navigation"
-          >
-            {menuOpen ? <X /> : <Menu />}
-          </Button>
+          <div className="header-actions">
+            <div className="header-contact">{cta()}</div>
+            <Button
+              type="button"
+              className="theme-toggle"
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            >
+              {theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+            </Button>
+            <Button
+              className="mobile-toggle"
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-navigation"
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </Button>
+          </div>
         </div>
       </header>
       {menuOpen && (
@@ -328,12 +351,6 @@ function Index() {
             <div className="contact-actions">
               {cta("Let us make it happen")}
               <Button variant="outline" className="portfolio-button" asChild>
-                <a href="mailto:huguesblessy@gmail.com">
-                  <Mail />
-                  Email me
-                </a>
-              </Button>
-              <Button variant="outline" className="portfolio-button" asChild>
                 <a href="https://wa.me/250794417555" target="_blank" rel="noopener noreferrer">
                   <MessageCircle />
                   WhatsApp
@@ -364,10 +381,6 @@ function Index() {
                     {label}
                   </a>
                 ))}
-                <a href="/admin">
-                  Admin panel
-                  <ArrowUpRight />
-                </a>
               </div>
               <div className="footer-column">
                 <span className="eyebrow">Connect</span>
@@ -378,10 +391,6 @@ function Index() {
                 >
                   Send message <ArrowUpRight />
                 </Button>
-                <a href="mailto:huguesblessy@gmail.com">
-                  <Mail />
-                  Email
-                </a>
                 <a
                   href="https://instagram.com/ngomijana_"
                   target="_blank"
@@ -393,6 +402,10 @@ function Index() {
                 <a href="https://wa.me/250794417555" target="_blank" rel="noopener noreferrer">
                   <MessageCircle />
                   WhatsApp
+                </a>
+                <a href="mailto:HuguesBlessy@gmail.com">
+                  <Mail />
+                  HuguesBlessy@gmail.com
                 </a>
                 <a href="https://github.com/H-Ngomijana" target="_blank" rel="noopener noreferrer">
                   <Github />

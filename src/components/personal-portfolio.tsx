@@ -319,13 +319,17 @@ export function PersonalAbout() {
 
 export function PersonalPortfolio() {
   const fetchContent = useServerFn(listPortfolioContent);
-  const { data: content, isError } = useQuery({
+  const {
+    data: content,
+    isError,
+    isPending,
+  } = useQuery({
     queryKey: ["public-portfolio-content"],
     queryFn: () => fetchContent(),
-    refetchInterval: 15_000,
+    refetchInterval: 3_000,
   });
-  const projects = isError ? fallbackProjects : (content?.projects ?? fallbackProjects);
-  const technologies = isError ? fallbackTools : (content?.tools ?? fallbackTools);
+  const projects = isError || isPending ? fallbackProjects : (content?.projects ?? []);
+  const technologies = isError || isPending ? fallbackTools : (content?.tools ?? []);
   const [project, setProject] = useState<PortfolioProject | null>(null);
   const [article, setArticle] = useState<(typeof articles)[number] | null>(null);
 

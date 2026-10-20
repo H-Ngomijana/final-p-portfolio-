@@ -31,35 +31,40 @@ values in the server environment before signing in:
 - `ADMIN_USERNAME` and `ADMIN_PASSWORD` for the owner login.
 - `ADMIN_SESSION_SECRET` as a random secret of at least 32 bytes for signing the
   eight-hour, HTTP-only session cookie.
-- `SUPABASE_URL` and either `SUPABASE_SERVICE_ROLE_KEY` (legacy service-role
-  key) or `SUPABASE_SECRET_KEY` (new Supabase secret key) for private owner
-  operations and project-image uploads.
-- `SUPABASE_PUBLISHABLE_KEY` for loading published content on the public site.
+- `DATABASE_URL` for a persistent PostgreSQL database (or `POSTGRES_URL` if that
+  is the variable provided by your host). Keep this value server-only.
 
-Keep the service-role key and admin credentials server-only; never use a
-`VITE_`-prefixed variable for them. The Supabase project must have the
-`developer_packages`, `portfolio_inquiries`, `portfolio_projects`, and
-`portfolio_tools` tables from the migrations in `drizzle/migrations`. Keep
-inquiry reads restricted to the service role. The owner workspace can publish
-packages, projects, and tools; project images are uploaded to the public
-`portfolio-projects` storage bucket. New public content refreshes automatically,
-and the inbox checks for new inquiries every three seconds while open. Direct
-email links open a message to `huguesblessy@gmail.com`; inquiry submissions are
-stored in the private dashboard and are not sent as email until an email
-provider is configured.
+The owner workspace can create, edit, publish, and delete plans, projects, and
+technology tools, upload project images, and search recent client inquiries.
+Contact inquiries and project/package requests are saved to the same shared
+store and appear in the private admin inbox. In production, portfolio content,
+packages, inquiries, and uploaded images are stored in PostgreSQL, shared across
+server instances and devices. Public portfolio pages and open admin dashboards
+poll the shared store every three seconds, so published admin edits appear on
+other devices within about three seconds. This requires every deployed instance
+to use the same persistent `DATABASE_URL` (or `POSTGRES_URL`); local JSON storage
+is only for development on one machine.
+The required tables are created automatically and the initial content is seeded
+when the database is first used. The admin dashboard refreshes every three
+seconds, so new inquiries and requests appear on other open admin devices within
+about three seconds. Submissions are not emailed unless an email provider is
+configured.
 
-Local dev reads server-only values from `.env` and `.env.local`. Set the same
-values as server-side secrets in Lovable Cloud for a deployed preview; local
-files are not published with the site. Find a Supabase secret key in the
-Supabase dashboard under **Project Settings → API Keys**. Add it in Lovable
-Cloud's server-side secrets as `SUPABASE_SECRET_KEY` (or use the legacy
-`SUPABASE_SERVICE_ROLE_KEY` name). Never put either key in client-exposed
-`VITE_*` variables.
+For local development, the app continues to use a JSON file at
+`./data/portfolio-content.json`; `PORTFOLIO_DATA_DIR` can override its location.
+### Deploying to Netlify
 
-Apply `drizzle/migrations/0000_create_portfolio_inquiries.sql`,
-`drizzle/migrations/0001_portfolio_owner_packages.sql`, and
-`drizzle/migrations/0002_live_portfolio_content.sql` in order to the connected
-Supabase project before using the studio. The admin workspace at `/admin` lets
-the owner create, edit, publish, and delete packages and prices, projects and
-their uploaded images, and technology tools. It also provides a searchable
-inbox for recent inquiries.
+The production build uses Nitro's Netlify preset. Configure the Netlify site to
+run `npm run build` with `dist` as the publish directory, and deploy the build
+through Netlify's Git integration or CLI so the generated serverless function
+ships alongside the static assets. Uploading only a `dist` folder as a manual
+static deploy will not include the server function; admin login, inquiry
+submissions, and database access will not work.
+
+In Netlify's server-side environment settings, provision a persistent PostgreSQL
+database and set `DATABASE_URL` (or `POSTGRES_URL` if required by your provider),
+`ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` (at least 32
+bytes). Do not expose these as `VITE_*` variables. Every deployed app instance
+must use the same database URL so submissions and admin updates are shared.
+Production requires this database configuration and will fail rather than
+silently use local-only storage if it is missing.

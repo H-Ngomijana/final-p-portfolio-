@@ -54,15 +54,15 @@ export function InquiryDialog({ open, onOpenChange, packageId = '', packageName 
       <DialogTitle className="font-display text-4xl font-normal">Work with Hugues B.</DialogTitle>
       <DialogDescription>Tell me what you want to build. I will review it from the private studio dashboard.</DialogDescription>
       <div className="contact-quick-links" aria-label="Direct contact links">
-        <Button variant="outline" asChild><a href="mailto:huguesblessy@gmail.com"><Mail />Email</a></Button>
         <Button variant="outline" asChild><a href="https://wa.me/250794417555" target="_blank" rel="noopener noreferrer"><MessageCircle />WhatsApp</a></Button>
+        <Button variant="outline" asChild><a href="mailto:HuguesBlessy@gmail.com"><Mail />Email</a></Button>
         <Button variant="outline" asChild><a href="https://instagram.com/ngomijana_" target="_blank" rel="noopener noreferrer"><Instagram />Instagram</a></Button>
         <Button variant="outline" asChild><a href="https://github.com/H-Ngomijana" target="_blank" rel="noopener noreferrer"><Github />GitHub</a></Button>
       </div>
       {sent ? <div className="form-success" role="status">
         <CheckCircle2 />
         <h3>Your message is in.</h3>
-        <p>Your inquiry has been saved for Hugues B. Use email or WhatsApp above for urgent requests.</p>
+        <p>Thank you for your inquiry. You will receive a brief email with feedback and recommended next steps.</p>
         <Button variant="secondary" onClick={() => onOpenChange(false)}>Back to Hugues B.</Button>
       </div> :
       <form className="inquiry-form" onSubmit={handleSubmit}>

@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdminSession } from "@/lib/admin-auth.functions";
-import { getServerEnv } from "@/lib/server-env";
-import type { Database } from "@/integrations/supabase/types";
+import {
+  getPortfolioData,
+  savePortfolioUpload,
+  updatePortfolioData,
+} from "@/lib/portfolio-store.server";
 import {
   deletePortfolioContentSchema,
   portfolioImageSchema,
@@ -11,90 +13,65 @@ import {
   portfolioToolSchema,
 } from "./portfolio-content";
 
-function createPublicClient() {
-  const url = getServerEnv("SUPABASE_URL");
-  const key = getServerEnv("SUPABASE_PUBLISHABLE_KEY");
-  if (!url || !key) throw new Error("Portfolio content is unavailable. Please try again.");
-
-  return createClient<Database>(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const headers = new Headers(init?.headers);
-        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) {
-          headers.delete("Authorization");
-        }
-        headers.set("apikey", key);
-        return fetch(input, { ...init, headers });
-      },
-    },
-  });
-}
-
 export const listPortfolioContent = createServerFn({ method: "GET" }).handler(async () => {
-  const client = createPublicClient();
-  const [projects, tools] = await Promise.all([
-    client
-      .from("portfolio_projects")
-      .select("id,title,category,image_url,alt,tags,description,details,href,published")
-      .eq("published", true)
-      .order("created_at"),
-    client
-      .from("portfolio_tools")
-      .select("id,name,role,note,icon_slug,published")
-      .eq("published", true)
-      .order("created_at"),
-  ]);
-  if (projects.error || tools.error) throw new Error("Portfolio content could not be loaded.");
-  return { projects: projects.data ?? [], tools: tools.data ?? [] };
+  const data = await getPortfolioData();
+  return {
+    projects: data.projects.filter((item) => item.published),
+    tools: data.tools.filter((item) => item.published),
+  };
 });
 
 export const savePortfolioProject = createServerFn({ method: "POST" })
   .middleware([requireAdminSession])
   .inputValidator((data) => portfolioProjectSchema.parse(data))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { id, ...values } = data;
-    const result = id
-      ? await supabaseAdmin
-          .from("portfolio_projects")
-          .update(values)
-          .eq("id", id)
-          .select("id")
-          .single()
-      : await supabaseAdmin.from("portfolio_projects").insert(values).select("id").single();
-    if (result.error) throw new Error("Project could not be saved.");
-    return { id: result.data.id };
-  });
+  .handler(async ({ data }) =>
+    updatePortfolioData((content) => {
+      const now = new Date().toISOString();
+      const { id, ...values } = data;
+      const project = { ...values, id: id ?? randomUUID(), created_at: now };
+      const index = content.projects.findIndex((item) => item.id === project.id);
+      if (id && index === -1) throw new Error("Project could not be saved.");
+      if (!id) content.projects.push(project);
+      else {
+        const existing = content.projects[index];
+        if (!existing) throw new Error("Project could not be saved.");
+        content.projects[index] = { ...existing, ...values };
+      }
+      return { id: project.id };
+    }),
+  );
 
 export const savePortfolioTool = createServerFn({ method: "POST" })
   .middleware([requireAdminSession])
   .inputValidator((data) => portfolioToolSchema.parse(data))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { id, ...values } = data;
-    const result = id
-      ? await supabaseAdmin
-          .from("portfolio_tools")
-          .update(values)
-          .eq("id", id)
-          .select("id")
-          .single()
-      : await supabaseAdmin.from("portfolio_tools").insert(values).select("id").single();
-    if (result.error) throw new Error("Tool could not be saved.");
-    return { id: result.data.id };
-  });
+  .handler(async ({ data }) =>
+    updatePortfolioData((content) => {
+      const now = new Date().toISOString();
+      const { id, ...values } = data;
+      const tool = { ...values, id: id ?? randomUUID(), created_at: now };
+      const index = content.tools.findIndex((item) => item.id === tool.id);
+      if (id && index === -1) throw new Error("Tool could not be saved.");
+      if (!id) content.tools.push(tool);
+      else {
+        const existing = content.tools[index];
+        if (!existing) throw new Error("Tool could not be saved.");
+        content.tools[index] = { ...existing, ...values };
+      }
+      return { id: tool.id };
+    }),
+  );
 
 export const deletePortfolioContent = createServerFn({ method: "POST" })
   .middleware([requireAdminSession])
   .inputValidator((data) => deletePortfolioContentSchema.parse(data))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const result =
-      data.kind === "project"
-        ? await supabaseAdmin.from("portfolio_projects").delete().eq("id", data.id)
-        : await supabaseAdmin.from("portfolio_tools").delete().eq("id", data.id);
-    if (result.error) throw new Error(`The ${data.kind} could not be deleted.`);
+    await updatePortfolioData((content) => {
+      if (data.kind === "project") {
+        content.projects = content.projects.filter((item) => item.id !== data.id);
+      } else {
+        content.tools = content.tools.filter((item) => item.id !== data.id);
+      }
+    });
     return { success: true };
   });
 
@@ -117,15 +94,7 @@ export const uploadPortfolioImage = createServerFn({ method: "POST" })
     if (!validSignature)
       throw new Error("The image file is invalid or uses an unsupported format.");
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const extension = data.contentType === "image/jpeg" ? "jpg" : data.contentType.split("/")[1];
-    const path = `${randomUUID()}.${extension}`;
-    const { error } = await supabaseAdmin.storage
-      .from("portfolio-projects")
-      .upload(path, bytes, { contentType: data.contentType, upsert: false });
-    if (error) throw new Error("Project image could not be uploaded.");
-    const { data: publicImage } = supabaseAdmin.storage
-      .from("portfolio-projects")
-      .getPublicUrl(path);
-    return { imageUrl: publicImage.publicUrl };
+    const extension =
+      data.contentType === "image/jpeg" ? "jpg" : data.contentType === "image/png" ? "png" : "webp";
+    return { imageUrl: await savePortfolioUpload(bytes, extension, data.contentType) };
   });
