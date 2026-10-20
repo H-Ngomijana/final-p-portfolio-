@@ -68,3 +68,16 @@ bytes). Do not expose these as `VITE_*` variables. Every deployed app instance
 must use the same database URL so submissions and admin updates are shared.
 Production requires this database configuration and will fail rather than
 silently use local-only storage if it is missing.
+
+### Deploying to Vercel
+
+Import the GitHub repository with the project root set to `./` and the
+TanStack Start framework preset. Use `npm run build` as the build command and
+`npm install` as the install command. Leave the output directory unset so
+Vercel can use Nitro's server function output instead of treating the app as a
+static site. `vercel.json` enables TanStack Start framework detection, and the
+Vercel environment automatically selects Nitro's Vercel preset.
+
+Add `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and a shared
+PostgreSQL `DATABASE_URL` in Vercel's server-side environment variables for
+Production and Preview as needed. Do not use `VITE_` prefixes for these secrets.

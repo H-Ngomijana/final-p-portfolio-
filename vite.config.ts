@@ -32,7 +32,7 @@ const loadServerEnvironment: Plugin = {
 
 export default defineConfig({
   plugins: [loadServerEnvironment],
-  nitro: { preset: "netlify" },
+  nitro: { preset: process.env["VERCEL"] ? "vercel" : "netlify" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
